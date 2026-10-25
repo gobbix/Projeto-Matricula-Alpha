@@ -11,7 +11,7 @@ O protótipo navegável usado para validar as telas e regras está em claude.ai 
 | Banco de dados, regras e segurança | Supabase (PostgreSQL + RLS) | **pronto e testado** (`supabase/`) |
 | Envio automático de e-mails | Supabase Edge Function + Resend | pronto (`supabase/functions/enviar-mensagens`) |
 | Site do associado (inscrição e comprovante) | Next.js na Vercel | **pronto e testado** (`app/`, `components/`) |
-| Painel da equipe | Next.js na Vercel | próximo passo |
+| Painel da equipe (`/painel`) | Next.js na Vercel + Supabase Auth | **pronto e testado** (`app/painel/`, `components/painel/`) |
 
 Toda regra que mexe em vagas roda **dentro do banco**, em funções com trava por turma. O site só chama essas funções; ele não decide quem fica com a vaga.
 
@@ -43,6 +43,8 @@ app/
   page.tsx                         inscrição (formulário em 5 etapas)
   comprovante/[token]/page.tsx     comprovante com situação atualizada (link enviado ao titular)
 components/inscricao/              etapas do formulário
+app/painel/                        painel da equipe: turmas, inscrições, balcão, chamada, equipe
+components/painel/                 login, pedido de acesso, formulário de turma, chamada, mensagens, solicitações
 lib/regras.ts                      regras usadas no formulário (idade, conflito, limite) + testes
 supabase/
   migrations/
@@ -58,6 +60,7 @@ tests/db/
 tests/e2e/
   rodar.sh                         banco local + API de teste + site + navegador (Playwright)
   inscricao.spec.ts                família inscrevendo titular e dependente, turma lotada, celular
+  painel.spec.ts                   coordenação, professor, desligamento com aprovação, pedido de acesso
 ```
 
 ## Como colocar no ar
@@ -94,6 +97,20 @@ npm install
 npm run dev                     # http://localhost:3000
 ```
 
+## Painel da equipe
+
+Em `/painel`. Cada pessoa cria a conta (e-mail e senha), pede acesso e a coordenação aprova na seção **Equipe**. As seções aparecem conforme as permissões do perfil:
+
+| Seção | O que faz | Permissão |
+|---|---|---|
+| Turmas | cadastro, vagas (uma a uma ou em lote), faixa etária, conflitos de horário, exportar | `turmas.ver` / `turmas.editar` |
+| Inscrições | período e textos, solicitações de desligamento, mensagens aos titulares, lista com filtros, cancelar, conferir, chamar a lista de espera, exportar | `inscricoes.*`, `desligamento.aprovar`, `mensagens.enviar`, `config.periodo` |
+| Balcão | inscrição presencial feita pela equipe (vale com as inscrições fechadas) | `inscricoes.balcao` |
+| Chamada | turmas do dia, P/F/J, frequência, alerta de faltas, solicitar ou fazer desligamento | `chamada.fazer` / `chamada.todas` |
+| Equipe | pedidos de acesso, membros, perfis e matriz de permissões | `equipe.gerenciar` |
+
+No Supabase, em Authentication > Providers > Email, decida se a conta precisa confirmar o e-mail antes de entrar (recomendado).
+
 Publicação na **Vercel**: importar o repositório, informar `NEXT_PUBLIC_SUPABASE_URL` e `NEXT_PUBLIC_SUPABASE_ANON_KEY` em Environment Variables e publicar. As inscrições só aparecem quando `config.inscricoes_abertas = true`.
 
 ## Testes
@@ -106,7 +123,7 @@ PGHOST=localhost PGPORT=5432 PGUSER=postgres tests/db/rodar.sh
 
 Resultado esperado: 11 linhas `OK`, incluindo a disputa de 30 inscrições simultâneas por 3 vagas (3 confirmadas, 27 na espera, fila sem empates).
 
-Regras do formulário e site completo no navegador:
+Regras do formulário, site e painel completos no navegador:
 
 ```bash
 npm test                                                        # regras do formulário (Vitest)

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { mensagemErro, supabase } from "@/lib/supabase";
 import {
   idade, idadeOk, parseNasc, validarParticipantes, validarTitular, normQL,
@@ -15,7 +16,9 @@ import Resultado, { type RespostaInscricao } from "./Resultado";
 const PASSOS = ["Associado", "Participantes", "Atividades", "Termo e envio", "Comprovante"];
 const TITULAR_VAZIO: Titular = { nome: "", quadra: "", lote: "", telefone: "", email: "" };
 
-export default function Inscricao({ config }: { config: Config }) {
+// `cliente` é usado no balcão (sessão da equipe); sem ele, a inscrição é anônima (associado)
+export default function Inscricao({ config, cliente }: { config: Config; cliente?: SupabaseClient }) {
+  const db = useCallback(() => cliente ?? supabase(), [cliente]);
   const [passo, setPasso] = useState(1);
   const [titular, setTitular] = useState<Titular>(TITULAR_VAZIO);
   const [participantes, setParticipantes] = useState<Participante[]>([]);
@@ -32,11 +35,11 @@ export default function Inscricao({ config }: { config: Config }) {
 
   // ---- catálogo de turmas (vagas livres e fila), atualizado enquanto a pessoa escolhe ----
   const carregarTurmas = useCallback(async () => {
-    const { data, error } = await supabase().from("turmas_publicas").select("*");
+    const { data, error } = await db().from("turmas_publicas").select("*");
     if (error) { setErros([mensagemErro(error)]); return null; }
     setTurmas(data as Turma[]);
     return data as Turma[];
-  }, []);
+  }, [db]);
   useEffect(() => {
     if (passo !== 3 && passo !== 4) return;
     const id = setInterval(carregarTurmas, 30000);
@@ -46,7 +49,7 @@ export default function Inscricao({ config }: { config: Config }) {
   async function carregarExistentes() {
     const res: Record<string, InscricaoExistente[]> = {};
     await Promise.all(participantes.map(async (p) => {
-      const { data } = await supabase().rpc("inscricoes_da_pessoa", {
+      const { data } = await db().rpc("inscricoes_da_pessoa", {
         p_quadra: titular.quadra, p_lote: titular.lote, p_nome: p.nome, p_nasc: parseNasc(p.nascTxt),
       });
       res[p.id] = (data as InscricaoExistente[]) || [];
@@ -98,7 +101,7 @@ export default function Inscricao({ config }: { config: Config }) {
     if (menores.length && !responsavel) e.push("Confirme que você é o responsável legal dos menores de 18 anos.");
     if (e.length) { setErros(e); return; }
     setEnviando(true); setErros([]);
-    const { data, error } = await supabase().rpc("inscrever", {
+    const { data, error } = await db().rpc("inscrever", {
       payload: {
         titular,
         participantes: participantes

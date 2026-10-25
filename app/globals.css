@@ -37,7 +37,7 @@ h1 { font-size: 34px; line-height: 1.05; margin: 0; font-weight: 700; }
 .grid3 { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 12px; }
 @media (max-width: 560px) { .grid2, .grid3 { grid-template-columns: minmax(0, 1fr); } }
 
-label.f { display: grid; gap: 4px; font-size: 12px; font-weight: 600; color: var(--muted); }
+label.f, div.f { display: grid; gap: 4px; font-size: 12px; font-weight: 600; color: var(--muted); }
 .field { border: 1px solid var(--line); background: var(--surface); border-radius: 6px; padding: 10px 12px; width: 100%; min-width: 0; font-size: 16px; color: var(--ink); font-weight: 400; }
 .check { display: flex; gap: 10px; align-items: flex-start; font-size: 15px; cursor: pointer; }
 .check input { margin-top: 3px; width: 18px; height: 18px; flex: none; }

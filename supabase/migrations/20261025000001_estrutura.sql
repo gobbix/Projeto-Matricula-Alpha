@@ -188,6 +188,7 @@ create table public.perfis (
 create table public.equipe (
   user_id        uuid primary key references auth.users(id) on delete cascade,
   nome           text not null,
+  email          text not null default '',
   perfil_id      text not null references public.perfis(id),
   professor_nome text not null default '',      -- nome como aparece no cronograma (para a chamada)
   ativo          boolean not null default true,
@@ -197,6 +198,7 @@ create table public.equipe (
 create table public.pedidos_acesso (
   user_id        uuid primary key references auth.users(id) on delete cascade default auth.uid(),
   nome           text not null,
+  email          text not null default '',      -- preenchido pelo banco a partir da conta (para a coordenação conferir quem pediu)
   perfil_id      text not null references public.perfis(id),
   professor_nome text not null default '',
   pedido_em      timestamptz not null default now()

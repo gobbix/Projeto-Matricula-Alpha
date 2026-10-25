@@ -278,11 +278,22 @@ grant execute on function public.consultar_inscricao(uuid) to anon, authenticate
 create or replace view public.turmas_publicas with (security_invoker = false) as
   select t.id, t.codigo, t.modalidade, t.nome, t.idade_min, t.idade_max, t.dias, t.inicio, t.fim, t.local, t.professor, t.vagas,
          greatest(t.vagas - count(i.*) filter (where i.status = 'confirmada'), 0)::int as vagas_livres,
+         (count(i.*) filter (where i.status = 'confirmada'))::int as confirmadas,
          (count(i.*) filter (where i.status = 'espera'))::int as fila
   from turmas t left join inscricoes i on i.turma_id = t.id
   where t.ativa
   group by t.id;
 grant select on public.turmas_publicas to anon, authenticated;
+
+-- Ocupação de todas as turmas (inclusive inativas), para o painel da equipe. Só contagens, sem dados pessoais.
+create or replace view public.ocupacao with (security_invoker = false) as
+  select t.id as turma_id,
+         (count(i.*) filter (where i.status = 'confirmada'))::int as confirmadas,
+         (count(i.*) filter (where i.status = 'espera'))::int as espera
+  from turmas t left join inscricoes i on i.turma_id = t.id
+  group by t.id;
+revoke all on public.ocupacao from anon;
+grant select on public.ocupacao to authenticated;
 
 -- Para o formulário: inscrições ativas da pessoa (evita escolher turma repetida ou com conflito)
 create or replace function public.inscricoes_da_pessoa(p_quadra text, p_lote text, p_nome text, p_nasc date)
@@ -452,11 +463,20 @@ begin
   perform exigir('equipe.gerenciar');
   select * into pd from pedidos_acesso where user_id = p_user;
   if not found then raise exception 'Pedido não encontrado.'; end if;
-  insert into equipe (user_id, nome, perfil_id, professor_nome, aprovado_por)
-  values (pd.user_id, pd.nome, coalesce(p_perfil, pd.perfil_id), coalesce(p_professor, pd.professor_nome), auth.uid())
+  insert into equipe (user_id, nome, email, perfil_id, professor_nome, aprovado_por)
+  values (pd.user_id, pd.nome, pd.email, coalesce(p_perfil, pd.perfil_id), coalesce(p_professor, pd.professor_nome), auth.uid())
   on conflict (user_id) do update set perfil_id = excluded.perfil_id, professor_nome = excluded.professor_nome, ativo = true;
   delete from pedidos_acesso where user_id = p_user;
 end $$;
+
+-- O e-mail do pedido vem da conta, não do que a pessoa digita
+create or replace function public.tg_pedido_email() returns trigger language plpgsql security definer set search_path = public as $$
+begin
+  new.user_id := auth.uid();
+  new.email := coalesce((select email from auth.users where id = auth.uid()), '');
+  return new;
+end $$;
+create trigger pedido_email before insert on public.pedidos_acesso for each row execute function public.tg_pedido_email();
 
 -- O que o usuário logado pode fazer (para o site montar o menu)
 create or replace function public.minhas_permissoes()
