@@ -10,7 +10,8 @@ O protótipo navegável usado para validar as telas e regras está em claude.ai 
 |---|---|---|
 | Banco de dados, regras e segurança | Supabase (PostgreSQL + RLS) | **pronto e testado** (`supabase/`) |
 | Envio automático de e-mails | Supabase Edge Function + Resend | pronto (`supabase/functions/enviar-mensagens`) |
-| Site do associado e painel da equipe | Next.js na Vercel | próximo passo |
+| Site do associado (inscrição e comprovante) | Next.js na Vercel | **pronto e testado** (`app/`, `components/`) |
+| Painel da equipe | Next.js na Vercel | próximo passo |
 
 Toda regra que mexe em vagas roda **dentro do banco**, em funções com trava por turma. O site só chama essas funções; ele não decide quem fica com a vaga.
 
@@ -38,6 +39,11 @@ Padrões: **Secretaria** vê turmas, vê e gerencia inscrições, atende no balc
 ## Estrutura
 
 ```
+app/
+  page.tsx                         inscrição (formulário em 5 etapas)
+  comprovante/[token]/page.tsx     comprovante com situação atualizada (link enviado ao titular)
+components/inscricao/              etapas do formulário
+lib/regras.ts                      regras usadas no formulário (idade, conflito, limite) + testes
 supabase/
   migrations/
     20261025000001_estrutura.sql   tabelas
@@ -49,6 +55,9 @@ tests/db/
   rodar.sh                         roda migrações + cenários num PostgreSQL local
   10_cenarios.sql                  regras de inscrição, permissões, chamada, desligamento, equipe
   20_concorrencia.sh               30 inscrições simultâneas disputando 3 vagas
+tests/e2e/
+  rodar.sh                         banco local + API de teste + site + navegador (Playwright)
+  inscricao.spec.ts                família inscrevendo titular e dependente, turma lotada, celular
 ```
 
 ## Como colocar no ar
@@ -77,6 +86,16 @@ tests/db/
    - Em Database > Webhooks, crie um webhook em **INSERT** na tabela `mensagens` apontando para a função, com o cabeçalho `x-webhook-secret`.
    - Opcional: agende com pg_cron uma chamada a cada 10 minutos para reenviar as que falharam.
 
+## Site do associado
+
+```bash
+cp .env.example .env.local      # preencher com a URL e a chave anon do projeto Supabase
+npm install
+npm run dev                     # http://localhost:3000
+```
+
+Publicação na **Vercel**: importar o repositório, informar `NEXT_PUBLIC_SUPABASE_URL` e `NEXT_PUBLIC_SUPABASE_ANON_KEY` em Environment Variables e publicar. As inscrições só aparecem quando `config.inscricoes_abertas = true`.
+
 ## Testes
 
 Precisam só de um PostgreSQL local (não usam o Supabase):
@@ -86,6 +105,15 @@ PGHOST=localhost PGPORT=5432 PGUSER=postgres tests/db/rodar.sh
 ```
 
 Resultado esperado: 11 linhas `OK`, incluindo a disputa de 30 inscrições simultâneas por 3 vagas (3 confirmadas, 27 na espera, fila sem empates).
+
+Regras do formulário e site completo no navegador:
+
+```bash
+npm test                                                        # regras do formulário (Vitest)
+PGHOST=localhost PGPORT=5432 PGUSER=postgres npm run test:e2e   # site de ponta a ponta (Playwright)
+```
+
+O teste de ponta a ponta não usa o Supabase: `tests/e2e/api-local.mjs` imita as rotas da API que o site chama, sobre o PostgreSQL local, sempre como usuário anônimo.
 
 ## Pendências do clube
 

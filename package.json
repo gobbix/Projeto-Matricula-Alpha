@@ -1,0 +1,40 @@
+{
+  "name": "matricula-alphaville",
+  "version": "0.1.0",
+  "directories": {
+    "test": "tests"
+  },
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:db": "tests/db/rodar.sh",
+    "test:e2e": "tests/e2e/rodar.sh"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/gobbix/projeto-matricula-alpha.git"
+  },
+  "bugs": {
+    "url": "https://github.com/gobbix/projeto-matricula-alpha/issues"
+  },
+  "homepage": "https://github.com/gobbix/projeto-matricula-alpha#readme",
+  "dependencies": {
+    "@supabase/supabase-js": "2.118.0",
+    "next": "15.5.28",
+    "react": "19.3.1",
+    "react-dom": "19.3.1"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.64.1",
+    "@types/node": "22.20.5",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "pg": "8.23.1",
+    "typescript": "5.9.3",
+    "vitest": "3.2.7"
+  },
+  "private": true
+}
